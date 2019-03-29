@@ -1,7 +1,12 @@
-#  Build An Alexa Meal Recommendation Skill 🇺🇸
-<img src="https://m.media-amazon.com/images/G/01/mobile-apps/dex/alexa/alexa-skills-kit/tutorials/quiz-game/header._TTH_.png" />
+# Conversation Alexa Skill
 
-## Overview
+Developing an Alexa skill that keeps the session open and enables conversation.
+
+#  From Original Source: 
+
+## Build An Alexa Meal Recommendation Skill
+
+### Overview
 
 In this workshop you will create a skill called The Foodie that recommends a meal. When launched, this Alexa Skill will prompt the user for the information it needs to recommend a meal. Once all of the required information
 is collected, it will send the data to an external web service which processes
@@ -23,16 +28,16 @@ To **Get Started** click the button below:
 
 Or click [here](./instructions/7-cli.md) for instructions using the ASK CLI (command line interface).
 
-## Additional Resources
+### Additional Resources
 
-### Community
+#### Community
 * [Amazon Developer Forums](https://forums.developer.amazon.com/spaces/165/index.html) - Join the conversation!
 * [Hackster.io](https://www.hackster.io/amazon-alexa) - See what others are building with Alexa.
 
-### Tutorials & Guides
+#### Tutorials & Guides
 * [Voice Design Guide](https://developer.amazon.com/designing-for-voice/) - A great resource for learning conversational and voice user interface design.
 * [Codecademy: Learn Alexa](https://www.codecademy.com/learn/learn-alexa) - Learn how to build an Alexa Skill from within your browser with this beginner friendly tutorial on Codecademy!
 
-### Documentation
+#### Documentation
 * [Official Alexa Skills Kit Node.js SDK](https://www.npmjs.com/package/alexa-sdk) - The Official Node.js SDK Documentation
 *  [Official Alexa Skills Kit Documentation](https://developer.amazon.com/docs/ask-overviews/build-skills-with-the-alexa-skills-kit.html) - Official Alexa Skills Kit Documentation
