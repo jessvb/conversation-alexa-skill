@@ -19,310 +19,275 @@ const LaunchRequestHandler = {
     const attributesManager = handlerInput.attributesManager;
     const sessionAttributes = attributesManager.getSessionAttributes();
 
-    const speechText = getWelcomeMessage(sessionAttributes)
-      + " " 
-      + getPrompt(sessionAttributes);
+    const speechText = getWelcomeMessage(sessionAttributes) +
+      " " +
+      getPrompt(sessionAttributes);
 
     return handlerInput.responseBuilder
       .speak(speechText)
       .reprompt(speechText)
-      .withAskForPermissionsConsentCard(permissions)
+      // .withAskForPermissionsConsentCard(permissions)
       .getResponse();
   },
 };
 
-const LaunchRequestWithConsentTokenHandler = {
-  canHandle(handlerInput) {
-    return handlerInput.requestEnvelope.request.type === "LaunchRequest"
-      && handlerInput.requestEnvelope.context.System.user.permissions
-      && handlerInput.requestEnvelope.context.System.user.permissions.consentToken;
-  },
-  async handle(handlerInput) {
-    const attributesManager = handlerInput.attributesManager;
-    const sessionAttributes = attributesManager.getSessionAttributes();
-
-    const speechText = getWelcomeMessage(sessionAttributes)
-      + " " 
-      + getPrompt(sessionAttributes);
-      
-    return handlerInput.responseBuilder
-      .speak(speechText)
-      .reprompt(speechText)
-      .getResponse();
-  }
-};
-
-const SIPRecommendationIntentHandler = {
-  canHandle(handlerInput) {
-    return handlerInput.requestEnvelope.request.type === 'IntentRequest'
-      && handlerInput.requestEnvelope.request.intent.name === 'RecommendationIntent'
-      && handlerInput.requestEnvelope.request.dialogState !== 'COMPLETED';
-  },
-  handle(handlerInput) {
-    
-    let currentIntent = handlerInput.requestEnvelope.request.intent;
-    const { responseBuilder } = handlerInput;
-    const result = disambiguateSlot(getSlotValues(currentIntent.slots));
-    
-    console.log('disambiguateSlot:', JSON.stringify(result));
-
-    if (result) {
-      responseBuilder
-        .speak(result.prompt)
-        .reprompt(result.prompt)
-        .addElicitSlotDirective(result.slotName, currentIntent);
-    } else {
-      responseBuilder.addDelegateDirective(currentIntent);
-    }
-
-    console.log('RESPONSE:', JSON.stringify(responseBuilder.getResponse()));
-    return responseBuilder
-      .getResponse();
-  }
-};
-
-// const CustomerProvidedMealRecommendationIntentHandler = {
+// const LaunchRequestWithConsentTokenHandler = {
 //   canHandle(handlerInput) {
-//     return handlerInput.requestEnvelope.request.type === "IntentRequest"
-//       && handlerInput.requestEnvelope.request.intent.name === "RecommendationIntent"
-//       && handlerInput.requestEnvelope.request.intent.slots.meal.value;
+//     return handlerInput.requestEnvelope.request.type === "LaunchRequest" &&
+//       handlerInput.requestEnvelope.context.System.user.permissions &&
+//       handlerInput.requestEnvelope.context.System.user.permissions.consentToken;
 //   },
-//   handle(handlerInput) {
+//   async handle(handlerInput) {
 
-//   }
-// };
+//     const attributesManager = handlerInput.attributesManager;
+//     const sessionAttributes = attributesManager.getSessionAttributes();
 
-const SuggestMealRecommendationIntentHandler = {
-  canHandle(handlerInput) {
+//     const speechText = getWelcomeMessage(sessionAttributes) +
+//       " " +
+//       getPrompt(sessionAttributes);
 
-    const attributesManager = handlerInput.attributesManager;
-    const sessionAttributes = attributesManager.getSessionAttributes();
-
-    const slots = ["timeOfDay", "cuisine", "allergies", "diet"];
-    
-    console.log('SuggestMealRecommendationIntent - meals:', sessionAttributes.recommendations.current.meals.length);
-    console.log('SuggestMealRecommendationIntent - meals:', JSON.stringify(sessionAttributes.recommendations.current.meals));
-
-    return handlerInput.requestEnvelope.request.type === 'IntentRequest'
-      && handlerInput.requestEnvelope.request.intent.name === 'RecommendationIntent'
-      && !handlerInput.requestEnvelope.request.intent.slots.meal.value 
-      && intentSlotsHaveBeenFilled(handlerInput.requestEnvelope.request.intent, slots) 
-      && !intentSlotsNeedDisambiguation(handlerInput.requestEnvelope.request.intent, slots);
-  },
-  handle(handlerInput) {
-    console.log('SuggestMealRecommendationIntent:', handlerInput.requestEnvelope.request);
-
-    const attributesManager = handlerInput.attributesManager;
-    const sessionAttributes = attributesManager.getSessionAttributes();
-    const currentIntent = handlerInput.requestEnvelope.request.intent;
-
-    // TODO: Do the look up here!
-
-    sessionAttributes.recommendations.current.meals = ["Domi Maeuntang", "Mae Un Tang", "Daegu Jorim"];
-    attributesManager.setSessionAttributes(sessionAttributes);
-
-    console.log('currentIntent.slots:', JSON.stringify(currentIntent.slots));
-
-    return handlerInput.responseBuilder
-      .speak("Great, I've found 3 meals: Domi Maeuntang, Mae Un Tang and Daegu Jorim which sounds best?")
-      .reprompt('Which sounds best Domi Maeuntang, Mae Un Tang or Daegu Jorim?')
-      .addElicitSlotDirective('meal', currentIntent)
-      .getResponse();
-  }
-};
-
-// TODO: handler for meals containing ingredients that conflict with their allergies and diet.
-
-
-// TODO: remove this since we no longer need it.
-const promptForDeliveryOption = {
-  canHandle(handlerInput) {
-    return handlerInput.requestEnvelope.request.type === 'IntentRequest'
-      && handlerInput.requestEnvelope.request.intent.name === 'RecommendationIntent'
-      && handlerInput.requestEnvelope.request.intent.slots.meal.value
-      && !handlerInput.requestEnvelope.request.intent.slots.deliveryOption.value;
-  },
-  handle(handlerInput) {
-    
-    return handlerInput.responseBuilder
-      .speak('Which would like, eat in, eat out, or make it?')
-      .reprompt('Would like to eat in, eat out, or make it?')
-      .addElicitSlotDirective('deliveryOption')
-      .getResponse();
-
-  }
-};
-
-const CRecommendationIntentHandler = {
-  canHandle(handlerInput) {
-    return handlerInput.requestEnvelope.request.type === "IntentRequest"
-      && handlerInput.requestEnvelope.request.intent.name === "RecommendationIntent"
-      && handlerInput.requestEnvelope.request.dialogState === "COMPLETED";
-  },
-  handle(handlerInput) {
-    console.log("COMPLETED RecommendationIntent");
-
-    const currentIntent = handlerInput.requestEnvelope.request.intent;
-    const slotValues = getSlotValues(currentIntent.slots);
-
-    const attributesManager = handlerInput.attributesManager;
-    const sessionAttributes = attributesManager.getSessionAttributes();
-
-    sessionAttributes.recommendations.previous = slotValues.meal.synonym;
-    sessionAttributes[currentIntent.name] = undefined;
-
-    console.log("deleting slot data for:", currentIntent.name);
-    console.log("after delete:", JSON.stringify(sessionAttributes));
-
-    attributesManager.setSessionAttributes(sessionAttributes);
-
-    let speechText = "";
-
-    // TODO: split this into different completed handlers
-    if (slotValues.deliveryOption.statusCode === "ER_SUCCESS_MATCH") {
-      
-      if (slotValues.deliveryOption.resolvedValues[0] !== "make") {
-        const address = sessionAttributes.profile.location.address;
-        if (address.zip || address.city && address.state) {
-          // TODO: look up where the restaurants would be
-          console.log("look up the restaurants");
-          speechText = "There's 2 restaurants close by korean bamboo and One pot. Which would you like?";
-
-        } else {
-          console.log("We need to elicit for address");
-          speechText = "To find a restaurant close by I need to know your address. What city do you live in?";
-        }
-      } else {
-        // TODO prompt for portion
-        speechText = "Which would you like a small, medium, or large portion size?";
-      }
-    } else {
-        // TODO: validate input for options - if we don't know ER_SUCCESS_NO_MATCH ask again
-        speechText = "Which would you like? to eat out, order delivery, or cook";
-        return handlerInput.responseBuilder
-          .addElicitSlotDirective("deliveryOption")
-          .speak(speechText)
-          .reprompt(speechText)
-          .getResponse();
-    }
-
-    return handlerInput.responseBuilder
-      .speak(speechText)
-      .reprompt(speechText)
-      .getResponse();
-  },
-};
-
-// TODO: remove this
-// const GetMealIntentHandler = {
-//   canHandle(handlerInput) {
-//     return handlerInput.requestEnvelope.request.type === "IntentRequest"
-//       && handlerInput.requestEnvelope.request.intent.name === "GetMealIntent";
-//   },
-//   handle(handlerInput) {
 //     return handlerInput.responseBuilder
-//       .speak("Hello there")
+//       .speak(speechText)
+//       .reprompt(speechText)
 //       .getResponse();
 //   }
 // };
 
-// TODO: remove this
-const LookupRestaurantIntentHandler = {
+// // TODO: what is this?
+// const SIPGetToKnowIntentHandler = {
+//   canHandle(handlerInput) {
+//     return handlerInput.requestEnvelope.request.type === 'IntentRequest' &&
+//       handlerInput.requestEnvelope.request.intent.name === 'GetToKnowIntent' &&
+//       handlerInput.requestEnvelope.request.dialogState !== 'COMPLETED';
+//   },
+//   handle(handlerInput) {
+
+//     let currentIntent = handlerInput.requestEnvelope.request.intent;
+//     const {
+//       responseBuilder
+//     } = handlerInput;
+//     const result = disambiguateSlot(getSlotValues(currentIntent.slots));
+
+//     console.log('disambiguateSlot:', JSON.stringify(result));
+
+//     if (result) {
+//       responseBuilder
+//         .speak(result.prompt)
+//         .reprompt(result.prompt)
+//         .addElicitSlotDirective(result.slotName, currentIntent);
+//     } else {
+//       responseBuilder.addDelegateDirective(currentIntent);
+//     }
+
+//     console.log('RESPONSE:', JSON.stringify(responseBuilder.getResponse()));
+//     return responseBuilder
+//       .getResponse();
+//   }
+// };
+
+// Already have all the slots - handler:
+const GetToKnowIntentHandler = {
   canHandle(handlerInput) {
-    return handlerInput.requestEnvelope.request.type === "IntentRequest"
-      && handlerInput.requestEnvelope.request.intent.name === "LookupRestaurantIntent";
+
+    const attributesManager = handlerInput.attributesManager;
+    const sessionAttributes = attributesManager.getSessionAttributes();
+
+    const slots = ["name", "place"];
+
+    console.log('GetToKnowIntent - name:', sessionAttributes.name);
+    console.log('GetToKnowIntent - place:', sessionAttributes.place);
+
+    return handlerInput.requestEnvelope.request.type === 'IntentRequest' &&
+      handlerInput.requestEnvelope.request.intent.name === 'GetToKnowIntent' &&
+      intentSlotsHaveBeenFilled(handlerInput.requestEnvelope.request.intent, slots) &&
+      !intentSlotsNeedDisambiguation(handlerInput.requestEnvelope.request.intent, slots);
   },
+  //   handle(handlerInput) {
+  //     console.log('GetToKnowIntent:', handlerInput.requestEnvelope.request);
+
+  //     const currentIntent = handlerInput.requestEnvelope.request.intent;
+
+  //     console.log('currentIntent.slots:', JSON.stringify(currentIntent.slots));
+  //     speechText = "";
+
+  //     return handlerInput.responseBuilder
+  //       .speak()
+  //       .reprompt('Which sounds best Domi Maeuntang, Mae Un Tang or Daegu Jorim?')
+  //       .addElicitSlotDirective('meal', currentIntent)
+  //       .getResponse();
+  //   }
+  // };
   handle(handlerInput) {
+    const currentIntent = handlerInput.requestEnvelope.request.intent;
+    const slotValues = getSlotValues(currentIntent.slots);
+    let speechText = "It was nice to meet you, " + slotValues.name.synonym +
+      ", from " +
+      slotValues.place.synonym +
+      ". I'd like to visit there one day!";
     return handlerInput.responseBuilder
-      .speak("I've sent Korean Bamboo's address to the Alexa App. Bon apetit!")
-      .getResponse();
+      .speak(speechText);
   }
 };
 
-const InProgressCaptureAddressIntentHandler = {
-  canHandle(handlerInput) {
-    return handlerInput.requestEnvelope.request.type === "IntentRequest"
-      && handlerInput.requestEnvelope.request.intent.name === "CaptureAddressIntent"
-      && handlerInput.requestEnvelope.request.dialogState !== "COMPLETED";
-  },
-  handle(handlerInput) {
-    return handlerInput.responseBuilder
-      .addDelegateDirective()
-      .getResponse();
-  }
-};
 
-const InProgressHasZipCaptureAddressIntentHandler = {
+// const CGetToKnowIntentHandler = {
+//   canHandle(handlerInput) {
+//     return handlerInput.requestEnvelope.request.type === "IntentRequest" &&
+//       handlerInput.requestEnvelope.request.intent.name === "GetToKnowIntent" &&
+//       handlerInput.requestEnvelope.request.dialogState === "COMPLETED";
+//   },
+//   handle(handlerInput) {
+//     console.log("COMPLETED GetToKnowIntent");
+
+//     const currentIntent = handlerInput.requestEnvelope.request.intent;
+//     const slotValues = getSlotValues(currentIntent.slots);
+
+//     const attributesManager = handlerInput.attributesManager;
+//     const sessionAttributes = attributesManager.getSessionAttributes();
+
+//     sessionAttributes.recommendations.previous = slotValues.meal.synonym;
+//     sessionAttributes[currentIntent.name] = undefined;
+
+//     console.log("deleting slot data for:", currentIntent.name);
+//     console.log("after delete:", JSON.stringify(sessionAttributes));
+
+//     attributesManager.setSessionAttributes(sessionAttributes);
+
+//     let speechText = "";
+
+//     return handlerInput.responseBuilder
+//       .speak(speechText)
+//       .reprompt(speechText)
+//       .getResponse();
+//   },
+// };
+
+// const InProgressCaptureAddressIntentHandler = {
+//   canHandle(handlerInput) {
+//     return handlerInput.requestEnvelope.request.type === "IntentRequest" &&
+//       handlerInput.requestEnvelope.request.intent.name === "CaptureAddressIntent" &&
+//       handlerInput.requestEnvelope.request.dialogState !== "COMPLETED";
+//   },
+//   handle(handlerInput) {
+//     return handlerInput.responseBuilder
+//       .addDelegateDirective()
+//       .getResponse();
+//   }
+// };
+
+// const InProgressHasZipCaptureAddressIntentHandler = {
+//   canHandle(handlerInput) {
+//     const currentIntent = handlerInput.requestEnvelope.request.intent;
+//     return handlerInput.requestEnvelope.request.type === "IntentRequest" &&
+//       currentIntent.name === "CaptureAddressIntent" &&
+//       intentSlotsHaveBeenFilled(currentIntent, ["zip"]) &&
+//       handlerInput.requestEnvelope.request.dialogState !== "COMPLETED";
+//   },
+//   handle(handlerInput) {
+//     const currentIntent = handlerInput.requestEnvelope.request.intent;
+//     const slotValues = getSlotValues(currentIntent.slots);
+//     let speechText = "There's 2 restaurants close to " + slotValues.zip.synonym;
+//     speechText += " Korean Bamboo and One pot. Which would you like?";
+//     return handlerInput.responseBuilder
+//       .speak(speechText)
+//       .reprompt(speechText)
+//       .getResponse();
+//   }
+// };
+
+// const InProgressHasCityStateCaptureAddressIntentHandler = {
+//   canHandle(handlerInput) {
+//     const currentIntent = handlerInput.requestEnvelope.request.intent;
+//     return handlerInput.requestEnvelope.request.type === "IntentRequest" &&
+//       currentIntent.name === "CaptureAddressIntent" &&
+//       intentSlotsHaveBeenFilled(currentIntent, ["city", "state"]) &&
+//       handlerInput.requestEnvelope.request.dialogState !== "COMPLETED";
+//   },
+//   handle(handlerInput) {
+//     const currentIntent = handlerInput.requestEnvelope.request.intent;
+//     const slotValues = getSlotValues(currentIntent.slots);
+//     let speechText = "There's 2 restaurants close to " + slotValues.city.synonym +
+//       ", " +
+//       slotValues.state.synonym +
+//       " Korean Bamboo and One pot. Which would you like?";
+//     return handlerInput.responseBuilder
+//       .speak(speechText)
+//       .reprompt(speechText)
+//       .getResponse();
+//   }
+// };
+
+const InProgressGetNameHandler = {
   canHandle(handlerInput) {
     const currentIntent = handlerInput.requestEnvelope.request.intent;
-    return handlerInput.requestEnvelope.request.type === "IntentRequest"
-      && currentIntent.name === "CaptureAddressIntent"
-      && intentSlotsHaveBeenFilled(currentIntent, ["zip"])
-      && handlerInput.requestEnvelope.request.dialogState !== "COMPLETED";
+    return handlerInput.requestEnvelope.request.type === "IntentRequest" &&
+      currentIntent.name === "getToKnowIntent" &&
+      intentSlotsHaveBeenFilled(currentIntent, ["place"]);
+    // && handlerInput.requestEnvelope.request.dialogState !== "COMPLETED";
   },
   handle(handlerInput) {
     const currentIntent = handlerInput.requestEnvelope.request.intent;
     const slotValues = getSlotValues(currentIntent.slots);
-    let speechText = "There's 2 restaurants close to " + slotValues.zip.synonym; 
-    speechText +=  " Korean Bamboo and One pot. Which would you like?";
+    let speechText = "" + slotValues.place.synonym + " sounds like an interesting place to live! I've never been. ";
+    speechText += "What's your name, by the way?";
+
+    let repromptText = "What's your name?";
     return handlerInput.responseBuilder
       .speak(speechText)
-      .reprompt(speechText)
+      .reprompt(repromptText)
       .getResponse();
   }
 };
 
-const InProgressHasCityStateCaptureAddressIntentHandler = {
+const InProgressGetPlaceHandler = {
   canHandle(handlerInput) {
     const currentIntent = handlerInput.requestEnvelope.request.intent;
-    return handlerInput.requestEnvelope.request.type === "IntentRequest"
-      && currentIntent.name === "CaptureAddressIntent"
-      && intentSlotsHaveBeenFilled(currentIntent, ["city", "state"])
-      && handlerInput.requestEnvelope.request.dialogState !== "COMPLETED";
+    return handlerInput.requestEnvelope.request.type === "IntentRequest" &&
+      currentIntent.name === "getToKnowIntent" &&
+      intentSlotsHaveBeenFilled(currentIntent, ["name"]);
+    // && handlerInput.requestEnvelope.request.dialogState !== "COMPLETED";
   },
   handle(handlerInput) {
     const currentIntent = handlerInput.requestEnvelope.request.intent;
     const slotValues = getSlotValues(currentIntent.slots);
-    let speechText = "There's 2 restaurants close to " + slotValues.city.synonym
-      + ", " 
-      + slotValues.state.synonym
-      + " Korean Bamboo and One pot. Which would you like?";
+    let speechText = "Nice to meet you, " + slotValues.name.synonym + "! ";
+    speechText += "Where are you from?";
+
+    let repromptText = "Where are you from?";
     return handlerInput.responseBuilder
       .speak(speechText)
-      .reprompt(speechText)
+      .reprompt(repromptText)
       .getResponse();
   }
 };
 
 
-const HelpIntentHandler = {
-  canHandle(handlerInput) {
-    return handlerInput.requestEnvelope.request.type === 'IntentRequest'
-      && handlerInput.requestEnvelope.request.intent.name === 'AMAZON.HelpIntent';
-  },
-  handle(handlerInput) {
-    const speechText = 'This is the foodie. I will find the best meal and restaurant recommendations for you. To get started say I\'m hungry';
+// const HelpIntentHandler = {
+//   canHandle(handlerInput) {
+//     return handlerInput.requestEnvelope.request.type === 'IntentRequest' &&
+//       handlerInput.requestEnvelope.request.intent.name === 'AMAZON.HelpIntent';
+//   },
+//   handle(handlerInput) {
+//     const speechText = 'TODO';
 
-    return handlerInput.responseBuilder
-      .speak(speechText)
-      .reprompt(speechText)
-      .withSimpleCard('The Foodie', speechText)
-      .getResponse();
-  },
-};
+//     return handlerInput.responseBuilder
+//       .speak(speechText)
+//       .reprompt(speechText)
+//       .getResponse();
+//   },
+// };
 
 const CancelAndStopIntentHandler = {
   canHandle(handlerInput) {
-    return handlerInput.requestEnvelope.request.type === 'IntentRequest'
-      && (handlerInput.requestEnvelope.request.intent.name === 'AMAZON.CancelIntent'
-        || handlerInput.requestEnvelope.request.intent.name === 'AMAZON.StopIntent');
+    return handlerInput.requestEnvelope.request.type === 'IntentRequest' &&
+      (handlerInput.requestEnvelope.request.intent.name === 'AMAZON.CancelIntent' ||
+        handlerInput.requestEnvelope.request.intent.name === 'AMAZON.StopIntent');
   },
   handle(handlerInput) {
     const speechText = 'Goodbye!';
 
     return handlerInput.responseBuilder
       .speak(speechText)
-      .withSimpleCard('The Foodie', speechText)
       .getResponse();
   },
 };
@@ -347,8 +312,8 @@ const ErrorHandler = {
     console.log(error.stack);
 
     return handlerInput.responseBuilder
-      .speak('Sorry, I can\'t understand the command. Please say again.')
-      .reprompt('Sorry, I can\'t understand the command. Please say again.')
+      .speak('Sorry, I can\'t understand the command. Please say it again.')
+      .reprompt('Sorry, I can\'t understand the command. Please say it again.')
       .getResponse();
   },
 };
@@ -373,102 +338,110 @@ const NewSessionRequestInterceptor = {
         console.log('Initializing new profile...');
         sessionAttributes.isNew = true;
         sessionAttributes.profile = initializeProfile();
-        sessionAttributes.recommendations = initializeRecommendations();
       } else {
         console.log('Restoring profile from persistent store.');
         sessionAttributes.isNew = false;
         sessionAttributes = persistentAttributes;
       }
-      
-      console.log("set sessionAttributes to:",JSON.stringify(sessionAttributes));
+
+      console.log("set sessionAttributes to:", JSON.stringify(sessionAttributes));
       attributesManager.setSessionAttributes(sessionAttributes);
     }
   }
 };
 
-const SetTimeOfDayInterceptor = {
-  async process(handlerInput) {
+// const SetTimeOfDayInterceptor = {
+//   // async process(handlerInput) {
 
-    const { requestEnvelope, serviceClientFactory, attributesManager } = handlerInput;
-    const sessionAttributes = attributesManager.getSessionAttributes();
+//   //   const {
+//   //     requestEnvelope,
+//   //     serviceClientFactory,
+//   //     attributesManager
+//   //   } = handlerInput;
+//   //   const sessionAttributes = attributesManager.getSessionAttributes();
 
-    // look up the time of day if we don't know it already.
-    if (!sessionAttributes.timeOfDay) {
-      const deviceId = requestEnvelope.context.System.device.deviceId;
+//     // // look up the time of day if we don't know it already.
+//     // if (!sessionAttributes.timeOfDay) {
+//     //   const deviceId = requestEnvelope.context.System.device.deviceId;
 
-      const upsServiceClient = serviceClientFactory.getUpsServiceClient();
-      const timezone = await upsServiceClient.getSystemTimeZone(deviceId);    
+//     //   const upsServiceClient = serviceClientFactory.getUpsServiceClient();
+//     //   const timezone = await upsServiceClient.getSystemTimeZone(deviceId);
 
-      const currentTime = getCurrentTime(timezone);
-      const timeOfDay = getTimeOfDay(currentTime);
+//     //   const currentTime = getCurrentTime(timezone);
+//     //   const timeOfDay = getTimeOfDay(currentTime);
 
-      sessionAttributes.timeOfDay = timeOfDay;
-      sessionAttributes.profile.location.timezone = timezone;
-      attributesManager.setSessionAttributes(sessionAttributes);
-      
-      console.log("SetTimeOfDayInterceptor - currentTime:", currentTime);
-      console.log("SetTimeOfDayInterceptor - timezone:", timezone);
-      console.log('SetTimeOfDayInterceptor - time of day:', timeOfDay);
-      console.log('SetTimeOfDayInterceptor - sessionAttributes', JSON.stringify(sessionAttributes));
-    }
-  }
-};
+//     //   sessionAttributes.timeOfDay = timeOfDay;
+//     //   sessionAttributes.profile.location.timezone = timezone;
+//     //   attributesManager.setSessionAttributes(sessionAttributes);
 
-const HasConsentTokenRequestInterceptor = {
-  async process(handlerInput) {
-    const { requestEnvelope, serviceClientFactory, attributesManager } = handlerInput;
-    const sessionAttributes = attributesManager.getSessionAttributes();
+//     //   console.log("SetTimeOfDayInterceptor - currentTime:", currentTime);
+//     //   console.log("SetTimeOfDayInterceptor - timezone:", timezone);
+//     //   console.log('SetTimeOfDayInterceptor - time of day:', timeOfDay);
+//     //   console.log('SetTimeOfDayInterceptor - sessionAttributes', JSON.stringify(sessionAttributes));
+//     // }
+//   }
+// };
 
-    if (handlerInput.requestEnvelope.context.System.user.permissions
-        && handlerInput.requestEnvelope.context.System.user.permissions.consentToken
-        && (!sessionAttributes.profile.location.address.city
-        || !sessionAttributes.profile.location.address.state
-        || !sessionAttributes.profile.location.address.zip)) {
+// const HasConsentTokenRequestInterceptor = {
+//   async process(handlerInput) {
+//     const {
+//       requestEnvelope,
+//       serviceClientFactory,
+//       attributesManager
+//     } = handlerInput;
+//     const sessionAttributes = attributesManager.getSessionAttributes();
 
-      const { deviceId } = requestEnvelope.context.System.device;
-      const deviceAddressServiceClient = serviceClientFactory.getDeviceAddressServiceClient();
-      const address = await deviceAddressServiceClient.getFullAddress(deviceId);
-        
-      console.log(JSON.stringify(address));
-  
-      if (address.postalCode) {
-        sessionAttributes.profile.location.address.zip = address.postalCode;
-      } else if (address.city && address.stateOrRegion) {
-        sessionAttributes.profile.location.address.city = address.city;
-        sessionAttributes.profile.location.address.state = address.stateOrRegion;
-      }
+//     // if (handlerInput.requestEnvelope.context.System.user.permissions &&
+//     //   handlerInput.requestEnvelope.context.System.user.permissions.consentToken &&
+//     //   (!sessionAttributes.profile.location.address.city ||
+//     //     !sessionAttributes.profile.location.address.state ||
+//     //     !sessionAttributes.profile.location.address.zip)) {
 
-      attributesManager.setSessionAttributes(sessionAttributes);
-      console.log('HasConsentTokenRequestInterceptor - sessionAttributes', JSON.stringify(sessionAttributes)); 
-    }
-  }
-};
+//     //   const {
+//     //     deviceId
+//     //   } = requestEnvelope.context.System.device;
+//     //   const deviceAddressServiceClient = serviceClientFactory.getDeviceAddressServiceClient();
+//     //   const address = await deviceAddressServiceClient.getFullAddress(deviceId);
+
+//     //   console.log(JSON.stringify(address));
+
+//     //   if (address.postalCode) {
+//     //     sessionAttributes.profile.location.address.zip = address.postalCode;
+//     //   } else if (address.city && address.stateOrRegion) {
+//     //     sessionAttributes.profile.location.address.city = address.city;
+//     //     sessionAttributes.profile.location.address.state = address.stateOrRegion;
+//     //   }
+
+//     //   attributesManager.setSessionAttributes(sessionAttributes);
+//     //   console.log('HasConsentTokenRequestInterceptor - sessionAttributes', JSON.stringify(sessionAttributes));
+//     // }
+//   }
+// };
 
 // This interceptor initializes our slots with the values from the user profile.
-const RecommendationIntentStartedRequestInterceptor = {
+const GetToKnowIntentStartedRequestInterceptor = {
   process(handlerInput) {
-    if (handlerInput.requestEnvelope.request.type === 'IntentRequest'
-      && handlerInput.requestEnvelope.request.intent.name === 'RecommendationIntent'
-      && handlerInput.requestEnvelope.request.dialogState === "STARTED") {
-        console.log("recommendationIntentStartedRequestInterceptor:", "Initialize the session attributes for the intent.");
+    if (handlerInput.requestEnvelope.request.type === 'IntentRequest' &&
+      handlerInput.requestEnvelope.request.intent.name === 'GetToKnowIntent' &&
+      handlerInput.requestEnvelope.request.dialogState === "STARTED") {
+      console.log("GetToKnowIntentStartedRequestInterceptor:", "Initialize the session attributes for the intent.");
 
-        const attributesManager = handlerInput.attributesManager;
-        const sessionAttributes = attributesManager.getSessionAttributes();
-        const profile = sessionAttributes.profile;
-        
-        // handlerInput is passed by reference so any modification we make in 
-        // our interceptor will be present in our intent handler's canHandle and
-        // handle function
-        const updatedIntent = handlerInput.requestEnvelope.request.intent;
+      const attributesManager = handlerInput.attributesManager;
+      const sessionAttributes = attributesManager.getSessionAttributes();
+      const profile = sessionAttributes.profile;
 
-        updatedIntent.slots.name.value = profile.name || undefined;
-        updatedIntent.slots.diet.value = profile.diet || undefined;
-        updatedIntent.slots.allergies.value = profile.allergies || undefined;
+      // handlerInput is passed by reference so any modification we make in 
+      // our interceptor will be present in our intent handler's canHandle and
+      // handle function
+      const updatedIntent = handlerInput.requestEnvelope.request.intent;
 
-        updatedIntent.slots.timeOfDay.value = sessionAttributes.timeOfDay || undefined;
+      updatedIntent.slots.name.value = profile.name || undefined;
+      updatedIntent.slots.diet.value = profile.place || undefined;
 
-        console.log(JSON.stringify(updatedIntent));
-      }
+      updatedIntent.slots.timeOfDay.value = sessionAttributes.timeOfDay || undefined;
+
+      console.log(JSON.stringify(updatedIntent));
+    }
   }
 };
 
@@ -476,31 +449,18 @@ const RecommendationIntentStartedRequestInterceptor = {
 // If allergies or diet have been provided, it will store them in the user 
 // profile stored in the session attributes. When the skill closes, this 
 // information will be saved.
-const RecommendationIntentCaptureSlotToProfileInterceptor = {
+const GetToKnowIntentCaptureSlotToProfileInterceptor = {
   process(handlerInput) {
-    const intentName = "RecommendationIntent";
-    const slots = [ "allergies", "diet"];
-    console.log('recommendationIntentCaptureSlotToProfileInterceptor');
+    const intentName = "GetToKnowIntent";
+    const slots = ["name", "place"];
+    console.log('GetToKnowIntentCaptureSlotToProfileInterceptor');
     saveNewlyFilledSlotsToSessionAttributes(handlerInput, intentName, slots, (sessionAttributes, slotName, newlyFilledSlot) => {
       sessionAttributes.profile[slotName] = newlyFilledSlot.synonym;
     });
   }
 };
 
-// This interceptor looks at the slots belonging to the request.
-// If zip, city or state have been provided, it will store them in the user 
-// location attributes. When the skill closes, this information will be saved.
-const CaptureAddressIntentCaptureSlotsToProfileInterceptor = {
-  process(handlerInput) {
-    const intentName = "CaptureAddressIntent";
-    const slots = ["zip", "city", "state"];
-    console.log('CaptureAddressIntentCaptureSlotsToProfileInterceptor call saveNewlyFilledSlotsToSessionAttributes');
-    saveNewlyFilledSlotsToSessionAttributes(handlerInput, intentName, slots, (sessionAttributes, slotName, newlyFilledSlot) => {
-      sessionAttributes.profile.location.address[slotName] = newlyFilledSlot.synonym;
-    });
-  }
-};
-
+/* HELPER */
 
 // given an intent name and a set of slots, saveNewlyFilledSlotsToSessionAttributes 
 // will save newly filled values of the given slots into the session attributes.
@@ -511,9 +471,9 @@ function saveNewlyFilledSlotsToSessionAttributes(handlerInput, intentName, slots
   const sessionAttributes = attributesManager.getSessionAttributes();
   const currentIntent = handlerInput.requestEnvelope.request.intent;
 
-  if (handlerInput.requestEnvelope.request.type === "IntentRequest"
-    && currentIntent.name === intentName) {
-    
+  if (handlerInput.requestEnvelope.request.type === "IntentRequest" &&
+    currentIntent.name === intentName) {
+
     const previousIntent = sessionAttributes[currentIntent.name];
     console.log('CALL intentHasNewlyFilledSlots IN saveNewlyFilledSlotsToSessionAttributes ');
     const newlyFilledSlots = intentHasNewlyFilledSlots(previousIntent, currentIntent, slots);
@@ -522,14 +482,14 @@ function saveNewlyFilledSlotsToSessionAttributes(handlerInput, intentName, slots
     // We only save if the slot(s) has been filled with something new.
     if (newlyFilledSlots.found) {
       for (let slotName in newlyFilledSlots.slots) {
-        console.log('inserting:', 
-        slotName, JSON.stringify(newlyFilledSlots.slots[slotName]), 
-        JSON.stringify(sessionAttributes));
+        console.log('inserting:',
+          slotName, JSON.stringify(newlyFilledSlots.slots[slotName]),
+          JSON.stringify(sessionAttributes));
         callback(sessionAttributes, slotName, newlyFilledSlots.slots[slotName]);
       }
       attributesManager.setSessionAttributes(sessionAttributes);
     }
-  }  
+  }
 }
 
 // This interceptor handles intent switching during dialog management by
@@ -540,8 +500,8 @@ const DialogManagementStateInterceptor = {
   process(handlerInput) {
     const currentIntent = handlerInput.requestEnvelope.request.intent;
 
-    if (handlerInput.requestEnvelope.request.type === "IntentRequest"
-      && handlerInput.requestEnvelope.request.dialogState !== "COMPLETED") {
+    if (handlerInput.requestEnvelope.request.type === "IntentRequest" &&
+      handlerInput.requestEnvelope.request.dialogState !== "COMPLETED") {
 
       const attributesManager = handlerInput.attributesManager;
       const sessionAttributes = attributesManager.getSessionAttributes();
@@ -558,7 +518,7 @@ const DialogManagementStateInterceptor = {
           if (currentIntentSlots[key].value && !currentIntent.slots[key].value) {
             currentIntent.slots[key] = currentIntentSlots[key];
           }
-        }    
+        }
       }
 
       sessionAttributes[currentIntent.name] = currentIntent;
@@ -582,17 +542,15 @@ const SessionWillEndInterceptor = {
 
     console.log('responseOutput:', JSON.stringify(responseOutput));
 
-    if(ses && !responseOutput.directives || requestType === 'SessionEndedRequest') {
+    if (ses && !responseOutput.directives || requestType === 'SessionEndedRequest') {
 
-    // if(shouldEndSession || requestType == 'SessionEndedRequest') {
+      // if(shouldEndSession || requestType == 'SessionEndedRequest') {
       console.log('SessionWillEndInterceptor', 'end!');
       const attributesManager = handlerInput.attributesManager;
       const sessionAttributes = attributesManager.getSessionAttributes();
       const persistentAttributes = await attributesManager.getPersistentAttributes();
-      
+
       persistentAttributes.profile = sessionAttributes.profile;
-      persistentAttributes.recommendations = sessionAttributes.recommendations;
-      persistentAttributes.recommendations.current.meals = [];
 
       console.log(JSON.stringify(sessionAttributes));
 
@@ -604,15 +562,11 @@ const SessionWillEndInterceptor = {
 
 /* CONSTANTS */
 
-const permissions = ['read::alexa:device:all:address'];
+// const permissions = ['read::alexa:device:all:address'];
 
 const requiredSlots = {
-  allergies: true,
-  meal: true,
-  cuisine: true,
-  diet: true,
-  deliveryOption: true,
-  timeOfDay: true
+  name: true,
+  place: true
 };
 
 /* HELPER FUNCTIONS */
@@ -620,30 +574,8 @@ const requiredSlots = {
 function initializeProfile() {
   return {
     name: "",
-    allergies: "",
-    diet: "",
-    location: {
-        address: {
-            city: "",
-            state: "",
-            zip: ""
-        },
-        timezone: ""
-    }
-  };
-}
-
-function initializeRecommendations() {
-  return {
-    previous: {
-        meal: "",
-        restaurant: ""
-    },
-    current: {
-        meals: [],
-        restaurants: []
-    }
-  };
+    place: ""
+  }
 }
 
 // gets the welcome message based upon the context of the skill.
@@ -652,72 +584,25 @@ function getWelcomeMessage(sessionAttributes) {
   let speechText = "";
 
   if (sessionAttributes.isNew) {
-    speechText += "<say-as interpret-as=\"interjection\">Howdy!</say-as> ";
-    speechText += "Welcome to The Foodie! ";
-    speechText += "I'll help you find the right food right now. ";
-    speechText += "To make that easier, you can give me permission to access your location, ";
-    speechText += "just check the Alexa app. ";
+    speechText += "<say-as interpret-as=\"interjection\">Hello there!</say-as> ";
   } else {
-    speechText += "Welcome back!! ";
-
-    const timeOfDay = sessionAttributes.timeOfDay;
-    if (timeOfDay) {
-      speechText += getTimeOfDayMessage(timeOfDay);
-    } else {
-      speechText += "It's time to stuff your face with delicious food. ";
-    }
-    
-    if (sessionAttributes.recommendations.previous.meal) {
-      speechText += "It looks like last time you had " + sessionAttributes.recommendations.previous.meal + ". ";
-      speechText += "I wonder what it will be today. ";
-    }
-    
+    speechText += "Welcome back, " + sessionAttributes.profile.name + "! ";
+    speechText += "Good to talk to you again. ";
   }
   return speechText;
 }
 
-function getTimeOfDayMessage(timeOfDay) {
-  const messages = timeOfDayMessages[timeOfDay];
-  return randomPhrase(messages);
-  
-}
-
 function randomPhrase(phraseList) {
   let i = Math.floor(Math.random() * phraseList.length);
-  return(phraseList[i]);
+  return (phraseList[i]);
 }
-
-const timeOfDayMessages = {
-  breakfast: [
-    "It looks like it's breakfast. ",
-    "<say-as interpret-as=\"interjection\">cock a doodle doo</say-as> It's time for breakfast. ", 
-    "Good morning! Time for breakfast"
-
-  ],
-  brunch: [
-    "<say-as interpret-as=\"interjection\">cock a doodle doo</say-as> Let's get some brunch! ", 
-    "It's time for brunch. "
-  ],
-  lunch: [
-    "Lunch time! ",
-    "Time for lunch. "
-  ],
-  dinner: [
-    "It's dinner time. ",
-    "It's supper time. "
-  ],
-  midnight: [
-    "<say-as interpret-as=\"interjection\">wowza</say-as> You're up late! You looking for a midnight snack? ",
-    "It's time for a midnight snack. "
-  ]
-};
 
 // gets the prompt based upon the context of the skill.
 function getPrompt(sessionAttributes) {
 
-  let speechText =  "How rude of me. I forgot to ask. What's your name?";
+  let speechText = "I don't think we've met before. What's your name? ";
   if (!sessionAttributes.isNew) {
-    speechText = "Let's narrow it down. What flavors do you feel like? You can say things like spicy, savory, greasy, and fresh.";
+    speechText = " ";
   }
 
   return speechText;
@@ -731,44 +616,44 @@ function getSlotValues(slots) {
 
   for (let key in slots) {
 
-      if (slots.hasOwnProperty(key)) {
+    if (slots.hasOwnProperty(key)) {
 
-          slotValues[key] = {
-              synonym: slots[key].value || null ,
-              resolvedValues: (slots[key].value ? [slots[key].value] : []),
-              statusCode: null,
-          };
-          
-          let statusCode = (((((slots[key] || {} )
+      slotValues[key] = {
+        synonym: slots[key].value || null,
+        resolvedValues: (slots[key].value ? [slots[key].value] : []),
+        statusCode: null,
+      };
+
+      let statusCode = (((((slots[key] || {})
               .resolutions || {})
-              .resolutionsPerAuthority || [])[0] || {} )
-              .status || {})
-              .code;
+            .resolutionsPerAuthority || [])[0] || {})
+          .status || {})
+        .code;
 
-          let authority = ((((slots[key] || {})
-              .resolutions || {})
-              .resolutionsPerAuthority || [])[0] || {})
-              .authority;
+      let authority = ((((slots[key] || {})
+            .resolutions || {})
+          .resolutionsPerAuthority || [])[0] || {})
+        .authority;
 
-          slotValues[key].authority = authority;
-          
-          // any value other than undefined then entity resolution was successful
-          if (statusCode) {
-              slotValues[key].statusCode = statusCode;
-              
-              // we have resolved value(s)!
-              if (slots[key].resolutions.resolutionsPerAuthority[0].values) {
-                  let resolvedValues = slots[key].resolutions.resolutionsPerAuthority[0].values;
-                  slotValues[key].resolvedValues = [];
-                  for (let i = 0; i < resolvedValues.length; i++) {                   
-                      slotValues[key].resolvedValues.push({
-                          value: resolvedValues[i].value.name,
-                          id: resolvedValues[i].value.id 
-                      });
-                  }
-              }
+      slotValues[key].authority = authority;
+
+      // any value other than undefined then entity resolution was successful
+      if (statusCode) {
+        slotValues[key].statusCode = statusCode;
+
+        // we have resolved value(s)!
+        if (slots[key].resolutions.resolutionsPerAuthority[0].values) {
+          let resolvedValues = slots[key].resolutions.resolutionsPerAuthority[0].values;
+          slotValues[key].resolvedValues = [];
+          for (let i = 0; i < resolvedValues.length; i++) {
+            slotValues[key].resolvedValues.push({
+              value: resolvedValues[i].value.name,
+              id: resolvedValues[i].value.id
+            });
           }
+        }
       }
+    }
   }
   return slotValues;
 }
@@ -778,12 +663,12 @@ function getNewSlots(previous, current) {
   const currentSlotValues = getSlotValues(current);
 
   let newlyCollectedSlots = {};
-  for(let slotName in previousSlotValues) {
-      // resolvedValues and statusCode are dependent on our synonym so we only
-      // need to check if there's a difference of synonyms.
-      if (previousSlotValues[slotName].synonym !== currentSlotValues[slotName].synonym){
-          newlyCollectedSlots[slotName] = currentSlotValues[slotName];
-      }
+  for (let slotName in previousSlotValues) {
+    // resolvedValues and statusCode are dependent on our synonym so we only
+    // need to check if there's a difference of synonyms.
+    if (previousSlotValues[slotName].synonym !== currentSlotValues[slotName].synonym) {
+      newlyCollectedSlots[slotName] = currentSlotValues[slotName];
+    }
   }
   return newlyCollectedSlots;
 }
@@ -821,9 +706,9 @@ function intentHasNewlyFilledSlots(previous, intent, slots) {
     found: false,
     slots: {}
   };
-  
+
   slots.forEach(slot => {
-    if(newSlots[slot]) {
+    if (newSlots[slot]) {
       results.slots[slot] = newSlots[slot];
       results.found = true;
     }
@@ -834,109 +719,107 @@ function intentHasNewlyFilledSlots(previous, intent, slots) {
 function buildDisambiguationPrompt(resolvedValues) {
   let output = "Which would you like";
   resolvedValues.forEach((resolvedValue, index) => {
-     output +=  `${(index === resolvedValues.length - 1) ? ' or ' : ' '}${resolvedValue.value}`; 
+    output += `${(index === resolvedValues.length - 1) ? ' or ' : ' '}${resolvedValue.value}`;
   });
   output += "?";
   return output;
 }
 
-function disambiguateSlot(slots) {
-  let result;
-  for(let slotName in slots) {
-      if (slots[slotName].resolvedValues.length > 1 && requiredSlots[slotName]) {
-          console.log('disambiguate:', slots[slotName]);
-          result = {
-              slotName: slotName,
-              prompt: buildDisambiguationPrompt(slots[slotName].resolvedValues)
-          };
-          break;
-      }
-  }
-  return result;
-}
+// function disambiguateSlot(slots) {
+//   let result;
+//   for (let slotName in slots) {
+//     if (slots[slotName].resolvedValues.length > 1 && requiredSlots[slotName]) {
+//       console.log('disambiguate:', slots[slotName]);
+//       result = {
+//         slotName: slotName,
+//         prompt: buildDisambiguationPrompt(slots[slotName].resolvedValues)
+//       };
+//       break;
+//     }
+//   }
+//   return result;
+// }
 
-// given an intent and an array slots, intentSlotsHaveBeenFilled will determine
-// if all of the slots in the array have been filled.
-// Returns:
-// (true | false)
-function intentSlotsHaveBeenFilled(intent, slots){
-  const slotValues = getSlotValues(intent.slots);
-  console.log('slot values:', JSON.stringify(slotValues));
-  let result = true;
-  slots.forEach(slot => {
-      console.log('intentSlotsHaveBeenFilled:', slot);
-      if (!slotValues[slot].synonym) {
-          result = false;
-      }
-  });
+// // given an intent and an array slots, intentSlotsHaveBeenFilled will determine
+// // if all of the slots in the array have been filled.
+// // Returns:
+// // (true | false)
+// function intentSlotsHaveBeenFilled(intent, slots) {
+//   const slotValues = getSlotValues(intent.slots);
+//   console.log('slot values:', JSON.stringify(slotValues));
+//   let result = true;
+//   slots.forEach(slot => {
+//     console.log('intentSlotsHaveBeenFilled:', slot);
+//     if (!slotValues[slot].synonym) {
+//       result = false;
+//     }
+//   });
 
-  return result;
-}
+//   return result;
+// }
 
-function intentSlotsNeedDisambiguation(intent, slots) {
-  const slotValues = getSlotValues(intent.slots);
-  let result = false;
-  slots.forEach(slot => {
-    console.log(slotValues[slot].resolvedValues.length);
-    if(slotValues[slot].resolvedValues.length > 1) {
-      result = true;
-    }
-  });
-  console.log("intentSlotsNeedDisambiguation", result);
-  return result;
-}
+// function intentSlotsNeedDisambiguation(intent, slots) {
+//   const slotValues = getSlotValues(intent.slots);
+//   let result = false;
+//   slots.forEach(slot => {
+//     console.log(slotValues[slot].resolvedValues.length);
+//     if (slotValues[slot].resolvedValues.length > 1) {
+//       result = true;
+//     }
+//   });
+//   console.log("intentSlotsNeedDisambiguation", result);
+//   return result;
+// }
 
-function getCurrentTime(location) {
+// function getCurrentTime(location) {
 
-  const currentTime = Moment.utc().tz(location);
-  return currentTime;
-}
+//   const currentTime = Moment.utc().tz(location);
+//   return currentTime;
+// }
 
-function getTimeOfDay(currentTime) {
-  const currentHour = currentTime.hours();
-  const currentMinutes = currentTime.minutes();
-  
-  const weightedHour = (currentMinutes >= 45) ? currentHour + 1 : currentHour;
-  
-  let timeOfDay = "midnight";
-  if (weightedHour >= 6 && weightedHour <= 10) {
-    timeOfDay = "breakfast";
-  } else if (weightedHour == 11) {
-    timeOfDay = "brunch";
-  } else if (weightedHour >= 12 && weightedHour <= 16) {
-    timeOfDay = "lunch";
-  } else if (weightedHour >= 17 && weightedHour <= 23) {
-    timeOfDay = "dinner";
-  }
-  return timeOfDay;
-}
+// function getTimeOfDay(currentTime) {
+//   const currentHour = currentTime.hours();
+//   const currentMinutes = currentTime.minutes();
+
+//   const weightedHour = (currentMinutes >= 45) ? currentHour + 1 : currentHour;
+
+//   let timeOfDay = "midnight";
+//   if (weightedHour >= 6 && weightedHour <= 10) {
+//     timeOfDay = "breakfast";
+//   } else if (weightedHour == 11) {
+//     timeOfDay = "brunch";
+//   } else if (weightedHour >= 12 && weightedHour <= 16) {
+//     timeOfDay = "lunch";
+//   } else if (weightedHour >= 17 && weightedHour <= 23) {
+//     timeOfDay = "dinner";
+//   }
+//   return timeOfDay;
+// }
 
 const skillBuilder = Alexa.SkillBuilders.standard();
 
 exports.handler = skillBuilder
   .addRequestHandlers(
-    LaunchRequestWithConsentTokenHandler,
+    // todo: LaunchRequestWithConsentTokenHandler,
     LaunchRequestHandler,
-    SuggestMealRecommendationIntentHandler,
+    GetToKnowIntentHandler,
     // promptForDeliveryOption,
-    SIPRecommendationIntentHandler,    
-    CRecommendationIntentHandler,
-    LookupRestaurantIntentHandler,
+    // SIPGetToKnowIntentHandler,
+    // CGetToKnowIntentHandler,
+    // LookupRestaurantIntentHandler,
     // GetMealIntentHandler,
-    InProgressHasZipCaptureAddressIntentHandler,
-    InProgressHasCityStateCaptureAddressIntentHandler,
-    InProgressCaptureAddressIntentHandler,
-    HelpIntentHandler,
+    InProgressGetNameHandler,
+    InProgressGetPlaceHandler,
+    // HelpIntentHandler,
     CancelAndStopIntentHandler,
     SessionEndedRequestHandler
   )
   .addRequestInterceptors(
     NewSessionRequestInterceptor,
-    SetTimeOfDayInterceptor,
-    HasConsentTokenRequestInterceptor,
-    RecommendationIntentStartedRequestInterceptor,
-    RecommendationIntentCaptureSlotToProfileInterceptor,
-    CaptureAddressIntentCaptureSlotsToProfileInterceptor,
+    // todo: SetTimeOfDayInterceptor,
+    // HasConsentTokenRequestInterceptor,
+    GetToKnowIntentStartedRequestInterceptor,
+    GetToKnowIntentCaptureSlotToProfileInterceptor,
     DialogManagementStateInterceptor
   )
   .addResponseInterceptors(SessionWillEndInterceptor)
@@ -944,5 +827,5 @@ exports.handler = skillBuilder
   //.withPersistenceAdapter()
   //.withApiClient(new Alexa.DefaultApiClient())
   .withAutoCreateTable(true)
-  .withTableName("theFoodie")
+  .withTableName("friendo")
   .lambda();

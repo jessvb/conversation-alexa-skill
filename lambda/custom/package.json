@@ -9,7 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "ask-sdk": "^2.0.0",
+    "ask-sdk": "^2.5.1",
     "moment-timezone": "^0.5.21"
   }
 }
